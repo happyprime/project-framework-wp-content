@@ -1,0 +1,28 @@
+name: Deployment
+
+on:
+  push:
+    branches: [ develop ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Add SSH Key
+      run: |
+        mkdir -p ${HOME}/.ssh
+        echo "${{secrets.DEPLOY_KEY}}" > ${HOME}/.ssh/id_rsa
+        chmod 700 ${HOME}/.ssh
+        chmod 600 ${HOME}/.ssh/*
+        eval `ssh-agent -s`
+        ssh-add ${HOME}/.ssh/id_rsa
+
+    - name: Sync wp-content directory
+      run: |
+        rsync -chav --delete \
+        -e "ssh -p ${{secrets.DEPLOY_PORT}} -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no" \
+        --exclude-from=.deploy_ignore \
+        ./ ${{secrets.DEPLOY_USER}}@${{secrets.DEPLOY_HOST}}:${{secrets.DEPLOY_PATH}}
